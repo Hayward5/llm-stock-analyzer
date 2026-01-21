@@ -3,12 +3,38 @@ YFinance data retrieval service for stock OHLCV and info.
 All functions are pure and suitable for dependency injection.
 """
 
-from typing import Dict
+import os
+from typing import Dict, Optional
 
 import pandas as pd
 
 import yfinance as yf
 from app.utils.logger import log
+
+
+def _build_session():
+    insecure = os.getenv("INSECURE_TLS", "").lower() in {"1", "true", "yes"}
+    insecure = insecure or os.getenv("YFINANCE_INSECURE_TLS", "").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+    if insecure:
+        try:
+            from curl_cffi import requests as curl_requests
+
+            session = curl_requests.Session()
+            session.verify = False
+            log.warning("YFinance TLS verification disabled (curl_cffi)")
+            return session
+        except ImportError:
+            import requests
+
+            session = requests.Session()
+            session.verify = False
+            log.warning("YFinance TLS verification disabled (requests)")
+            return session
+    return None
 
 
 def fetch_kline_data(yf_code: str) -> pd.DataFrame:
@@ -20,8 +46,13 @@ def fetch_kline_data(yf_code: str) -> pd.DataFrame:
         pd.DataFrame: DataFrame with columns [open, high, low, close, volume].
     """
     try:
+        session = _build_session()
         data = yf.download(
-            tickers=yf_code, period="3mo", interval="1d", auto_adjust=True
+            tickers=yf_code,
+            period="3mo",
+            interval="1d",
+            auto_adjust=True,
+            session=session,
         )
         if data is None or data.empty:
             log.warning(f"No data returned for ({yf_code})")
@@ -68,7 +99,8 @@ def fetch_stock_info(yf_code: str) -> Dict[str, str]:
         dict: {"sector": str, "industry": str}
     """
     try:
-        stock = yf.Ticker(yf_code)
+        session = _build_session()
+        stock = yf.Ticker(yf_code, session=session)
         info = stock.info
         sector = info.get("sector", "未知行業")
         industry = info.get("industry", "未知產業")

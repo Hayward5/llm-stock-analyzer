@@ -1,3 +1,6 @@
+import os
+import urllib3
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -6,11 +9,18 @@ from fastapi import FastAPI
 
 from app.api.v1.endpoints import router as v1_router
 from app.configs.config import get_config
-from app.utils.logger import log
+from app.utils.logger import Loggers, log
 
 config = get_config()
 
-# Loggers.init_config(log_level=config.app.log_level) # Initialize logging configuration(If needed)
+if os.getenv("INSECURE_TLS", "").lower() in {"1", "true", "yes"}:
+    os.environ["CURL_CA_BUNDLE"] = ""
+    os.environ["REQUESTS_CA_BUNDLE"] = ""
+    os.environ["PYTHONHTTPSVERIFY"] = "0"
+    urllib3.disable_warnings()
+    log.warning("TLS verification disabled by INSECURE_TLS")
+
+Loggers.init_config(log_level=config.app.log_level)
 
 app = FastAPI(
     title=config.app.name,

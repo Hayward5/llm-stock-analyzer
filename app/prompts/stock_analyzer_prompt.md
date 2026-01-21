@@ -21,4 +21,6 @@ Your task:
 
 Do not output anything except the JSON object above. The reason field must not exceed 150 words.
 
+When indicators are missing, invalid, or incomplete, always return a "Wait" suggestion and explain that there is insufficient data to form a trade.
+
 Now, analyze the following technical indicators and provide your best actionable trade insight

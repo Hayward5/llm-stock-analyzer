@@ -9,6 +9,7 @@ import subprocess
 from typing import Iterable, List
 
 from app.configs.config import OpenCodeConfig
+from app.utils.logger import log
 
 
 class OpenCodeClient:
@@ -16,6 +17,12 @@ class OpenCodeClient:
         self._config = config
 
     def invoke(self, prompt: str) -> str:
+        log.debug(
+            "[Breakpoint] OpenCode invoke: model={} format={} prompt_chars={}",
+            self._config.model,
+            self._config.format,
+            len(prompt),
+        )
         cmd = self._build_command(prompt)
         result = subprocess.run(
             cmd,
@@ -30,8 +37,16 @@ class OpenCodeClient:
                 f"{result.stderr.strip() or result.stdout.strip()}"
             )
         output = result.stdout.strip()
+        log.debug("[Breakpoint] OpenCode stdout chars={}", len(output))
+        log.debug("[Breakpoint] OpenCode stdout head={}", output[:400])
         if self._config.format == "json":
-            return _extract_text_from_json(output)
+            text = _extract_text_from_json(output)
+            log.debug(
+                "[Breakpoint] OpenCode extracted chars={}",
+                len(text),
+            )
+            log.debug("[Breakpoint] OpenCode extracted head={}", text[:400])
+            return text
         return output
 
     def _build_command(self, prompt: str) -> List[str]:
@@ -56,7 +71,23 @@ def _extract_text_from_json(output: str) -> str:
         except json.JSONDecodeError:
             continue
         chunks.extend(_walk_text(payload))
-    return "".join(chunks).strip()
+    text = "".join(chunks).strip()
+    json_text = _extract_last_json_object(text)
+    return json_text or text
+
+
+def _extract_last_json_object(text: str) -> str:
+    decoder = json.JSONDecoder()
+    for index in range(len(text) - 1, -1, -1):
+        if text[index] != "{":
+            continue
+        try:
+            obj, _ = decoder.raw_decode(text[index:])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(obj, dict):
+            return json.dumps(obj, ensure_ascii=False)
+    return ""
 
 
 def _walk_text(value: object) -> Iterable[str]:
@@ -68,7 +99,7 @@ def _walk_text(value: object) -> Iterable[str]:
         texts: List[str] = []
         if "text" in value and isinstance(value["text"], str):
             texts.append(value["text"])
-        for key in ("content", "message", "delta"):
+        for key in ("content", "message", "delta", "part"):
             if key in value:
                 texts.extend(_walk_text(value[key]))
         return texts

@@ -21,6 +21,7 @@ from app.internal.analysis.indicators import (
 )
 from app.internal.yfinance.stock_data import fetch_kline_data
 from app.services.analysis.trend_analysis import generate_trend_signals
+from app.utils.logger import log
 
 
 def fetch_and_prepare_kline(stock_id: str) -> pd.DataFrame:
@@ -72,11 +73,23 @@ def analyze_stock_trend_signal(stock_id: str) -> dict[str, Any]:
     Main pipeline: fetch kbar, enrich with indicators, and generate structured trend signals.
     Returns a signal dict for LLM or downstream use.
     """
+    log.debug("[Breakpoint] Fetching kline data: stock_id={}", stock_id)
     df = fetch_and_prepare_kline(stock_id)
     if df.empty:
+        log.debug("[Breakpoint] Kline data empty for {}", stock_id)
         return {"signal_status": "invalid", "reason": f"No kbar data for {stock_id}"}
     enriched_df = enrich_with_all_indicators(df)
+    log.debug(
+        "[Breakpoint] Enriched data rows={} columns={}",
+        len(enriched_df),
+        len(enriched_df.columns),
+    )
     signal = generate_trend_signals(enriched_df)
+    log.debug(
+        "[Breakpoint] Signal status={} score_total={}",
+        signal.get("signal_status"),
+        signal.get("score_total"),
+    )
     # Ensure the result is a dict at the top level
     if not isinstance(signal, dict):
         return {"signal_status": "invalid", "reason": "Signal is not a dict"}

@@ -139,6 +139,7 @@ celerybeat.pid
 .env
 .envrc
 .venv
+app/configs/config.yaml
 env/
 venv/
 ENV/
@@ -201,6 +202,9 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+
+# App assets
+app/assets/
 
 # Marimo
 marimo/_static/
