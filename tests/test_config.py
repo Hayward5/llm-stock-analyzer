@@ -21,13 +21,20 @@ def test_get_config_loads_yaml(monkeypatch):
             "temperature": 0.5,
             "max_tokens": 100,
             "retry": 2,
+            "provider": "bedrock",
         },
         "shioaji": {"api_key": "key", "api_secret": "secret"},
-        "azure_openai": {
-            "endpoint": "https://test",
-            "api_version": "2024-01-01",
-            "deployment": "gpt-4",
-            "subscription_key": "sk-xxx",
+        "bedrock": {
+            "region": "us-east-1",
+            "model_id": "amazon.nova-pro-v1:0",
+        },
+        "opencode": {
+            "command": "opencode",
+            "model": "google/antigravity-claude-sonnet-4-5",
+            "variant": "max",
+            "attach_url": "http://localhost:4096",
+            "format": "default",
+            "timeout_seconds": 120,
         },
     }
     yaml_str = yaml.dump(config_dict)
@@ -39,4 +46,4 @@ def test_get_config_loads_yaml(monkeypatch):
         assert cfg.app.name == "TestApp"
         assert cfg.llm.temperature == 0.5
         assert cfg.shioaji.api_key == "key"
-        assert cfg.azure_openai.endpoint == "https://test"
+    assert cfg.bedrock.region == "us-east-1"

@@ -11,13 +11,20 @@ llm:
   temperature: 0.5
   max_tokens: 4096
   retry: 3
+  provider: "bedrock"
 
 shioaji:
   api_key: "your_shioaji_api_key_here"
   api_secret: "your_shioaji_api_secret_here"
 
-azure_openai:
-  endpoint: "https://your-azure-openai-endpoint.openai.azure.com/"
-  api_version: "2024-12-01-preview"
-  deployment: "gpt-4.1"
-  subscription_key: "your_azure_openai_subscription_key_here"
+bedrock:
+  region: "us-east-1"
+  model_id: "amazon.nova-pro-v1:0"
+
+opencode:
+  command: "opencode"
+  model: "google/antigravity-claude-sonnet-4-5"
+  variant: "max"
+  attach_url: "http://localhost:4096"
+  format: "default"
+  timeout_seconds: 120

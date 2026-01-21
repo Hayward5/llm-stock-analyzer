@@ -6,7 +6,9 @@ import os
 from functools import lru_cache
 
 import yaml
-from pydantic import BaseModel, SecretStr, StrictFloat, StrictInt, StrictStr
+from typing import Optional
+
+from pydantic import BaseModel, StrictFloat, StrictInt, StrictStr
 from pydantic_settings import BaseSettings
 
 
@@ -24,6 +26,7 @@ class LLMConfig(BaseModel):
     temperature: StrictFloat
     max_tokens: StrictInt
     retry: StrictInt
+    provider: StrictStr
 
 
 class ShioajiConfig(BaseModel):
@@ -31,18 +34,26 @@ class ShioajiConfig(BaseModel):
     api_secret: str
 
 
-class AzureOpenAIConfig(BaseModel):
-    endpoint: StrictStr
-    api_version: StrictStr
-    deployment: StrictStr
-    subscription_key: SecretStr
+class BedrockConfig(BaseModel):
+    region: StrictStr
+    model_id: StrictStr
+
+
+class OpenCodeConfig(BaseModel):
+    command: StrictStr
+    model: StrictStr
+    variant: Optional[StrictStr] = None
+    attach_url: Optional[StrictStr] = None
+    format: StrictStr = "default"
+    timeout_seconds: StrictInt = 120
 
 
 class Config(BaseSettings):
     app: AppConfig
     llm: LLMConfig
     shioaji: ShioajiConfig
-    azure_openai: AzureOpenAIConfig
+    bedrock: BedrockConfig
+    opencode: Optional[OpenCodeConfig] = None
 
 
 @lru_cache()

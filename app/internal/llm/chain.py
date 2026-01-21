@@ -5,28 +5,68 @@ LLM chain for stock trend analysis: embeds signal into prompt and queries LLM.
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+import boto3
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnableLambda, RunnableSerializable
 from langchain_core.runnables.retry import RunnableRetry
-from langchain_openai import AzureChatOpenAI
 
 from app.configs.config import Config, get_config
+from app.internal.llm.opencode_client import OpenCodeClient
 from app.services.analysis.stock_trend_pipeline import analyze_stock_trend_signal
 
 
-def get_llm_client(config: Optional[Config] = None) -> AzureChatOpenAI:
-    """Return AzureChatOpenAI client for stock analysis."""
+class BedrockConverseClient:
+    def __init__(
+        self,
+        client: Any,
+        model_id: str,
+        temperature: float,
+        max_tokens: int,
+        top_p: float,
+    ) -> None:
+        self._client = client
+        self._model_id = model_id
+        self._temperature = temperature
+        self._max_tokens = max_tokens
+        self._top_p = top_p
+
+    def invoke(self, prompt: str) -> str:
+        response = self._client.converse(
+            modelId=self._model_id,
+            messages=[{"role": "user", "content": [{"text": prompt}]}],
+            inferenceConfig={
+                "temperature": self._temperature,
+                "maxTokens": self._max_tokens,
+                "topP": self._top_p,
+            },
+        )
+        content_items = response.get("output", {}).get("message", {}).get(
+            "content", []
+        )
+        text_chunks = [item.get("text", "") for item in content_items]
+        return "".join(text_chunks).strip()
+
+
+def get_llm_client(config: Optional[Config] = None) -> Any:
+    """Return LLM client for stock analysis."""
     if config is None:
         config = get_config()
-    return AzureChatOpenAI(
-        azure_deployment=config.azure_openai.deployment,
-        azure_endpoint=config.azure_openai.endpoint,
-        api_version=config.azure_openai.api_version,
-        api_key=config.azure_openai.subscription_key,
-        temperature=config.llm.temperature,
-        max_tokens=config.llm.max_tokens,
-    )
+    provider = config.llm.provider.lower()
+    if provider == "bedrock":
+        client = boto3.client("bedrock-runtime", region_name=config.bedrock.region)
+        return BedrockConverseClient(
+            client=client,
+            model_id=config.bedrock.model_id,
+            temperature=config.llm.temperature,
+            max_tokens=config.llm.max_tokens,
+            top_p=0.9,
+        )
+    if provider == "opencode":
+        if config.opencode is None:
+            raise ValueError("opencode config is required for opencode provider")
+        return OpenCodeClient(config.opencode)
+    raise ValueError(f"Unsupported LLM provider: {config.llm.provider}")
 
 
 def load_prompt_template(prompt_file: Path) -> PromptTemplate:
