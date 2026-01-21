@@ -2,12 +2,12 @@
 
 ## Overview
 
-A modern, maintainable API service for LLM-powered stock analysis, built with FastAPI, LangChain, Pydantic, and Python 3.12+. The service provides actionable trading suggestions using technical indicators and LLM reasoning, with a clean separation of business logic, prompt management, and API endpoints.
+A modern, maintainable API service for LLM-powered stock analysis, built with FastAPI, LangChain, Pydantic, and Python 3.12+. The service provides actionable trading suggestions using technical indicators and quantified trend scores, with a clean separation of business logic, prompt management, and API endpoints.
 
 ## Features
 
 - **FastAPI** for async, production-grade API endpoints
-- **LangChain** for LLM integration and prompt chaining
+- **LangChain** for prompt chaining and structured parsing
 - **Pydantic v2** for robust request/response validation
 - **YFinance** for global stock data
 - **Shioaji (永豐金) API integration** for Taiwan market data (modular, see below)
@@ -15,6 +15,8 @@ A modern, maintainable API service for LLM-powered stock analysis, built with Fa
 - **Versioned, documented prompt templates**
 - **Structured logging and config management**
 - **Comprehensive CI workflow (lint, type check, test)**
+- **Quantified trend scoring** (score_total, score_breakdown, score_signals)
+- **LLM provider switching** (AWS Bedrock or OpenCode CLI)
 
 ## Usage
 
@@ -64,13 +66,83 @@ A modern, maintainable API service for LLM-powered stock analysis, built with Fa
    uv sync
    ```
 
+   If your environment has TLS issues, use trusted hosts:
+
+   ```sh
+   uv pip install -e . --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host=files.pythonhosted.org
+   ```
+
+## LLM Providers
+
+The app supports two LLM backends. Switch via `llm.provider` in `app/configs/config.yaml`.
+
+### Option A: AWS Bedrock (default)
+
+```yaml
+llm:
+  provider: "bedrock"
+
+bedrock:
+  region: "us-east-1"
+  model_id: "amazon.nova-pro-v1:0"
+```
+
+Make sure your AWS credentials and Bedrock model access are configured.
+
+Bedrock access checklist:
+- Enable model access in AWS Bedrock for the chosen `model_id`.
+- Grant `bedrock:InvokeModel` (and `bedrock:InvokeModelWithResponseStream` if needed).
+- Provide credentials via `AWS_PROFILE` or `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`.
+
+Example using `AWS_PROFILE`:
+
+```sh
+export AWS_PROFILE=your-profile
+```
+
+### Option B: OpenCode CLI (opencode serve + attach)
+
+1. Start OpenCode server:
+
+```sh
+opencode serve --port 4096
+```
+
+2. Authenticate OpenCode with your provider:
+
+```sh
+opencode auth login
+```
+
+Check configured providers:
+
+```sh
+opencode auth list
+```
+
+3. Configure OpenCode in `config.yaml`:
+
+```yaml
+llm:
+  provider: "opencode"
+
+opencode:
+  command: "opencode"
+  model: "google/antigravity-claude-sonnet-4-5"
+  variant: "max"
+  attach_url: "http://localhost:4096"
+  format: "default"
+  timeout_seconds: 120
+```
+
 ## Project Structure
 
 - `app/main.py` — FastAPI app entrypoint, config, logger
 - `app/api/v1/endpoints.py` — API endpoints (LLM analysis, health)
 - `app/configs/config.py` — Pydantic config, YAML loading
 - `app/internal/analysis/indicators.py` — Technical indicator functions (MACD, RSI, OBV, etc.)
-- `app/internal/llm/chain.py` — LLM chain, prompt formatting, output parsing (LangChain)
+- `app/internal/llm/chain.py` — LLM chain, prompt formatting, output parsing
+- `app/internal/llm/opencode_client.py` — OpenCode CLI LLM client wrapper
 - `app/internal/shioaji/stock_data.py` — Shioaji (TW market) data logic (modular, not required for global)
 - `app/internal/yfinance/stock_data.py` — YFinance (global market) data logic
 - `app/services/analysis/stock_trend_pipeline.py` — Data pipeline, indicator enrichment
