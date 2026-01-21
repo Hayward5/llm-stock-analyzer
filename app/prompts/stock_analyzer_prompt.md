@@ -8,6 +8,8 @@ Your task:
 - Review the provided technical indicators for a specific asset.
 - Immediately provide your trading suggestion: **Long**, **Short**, or **Wait** (hold/observe). State this clearly at the very beginning of your report.
 - After your suggestion, briefly justify your reasoning. Focus on the overall market context, trend, and actionable insight, not on explaining each indicator in detail.
+- Use score_total as the primary decision input.
+- Use score_breakdown for brief justification.
 - Highlight any major supporting or conflicting signals, and mention how you would manage risk or uncertainty.
 - Keep your report clear, concise, and easy to understand for traders and decision makers.
 - Your output **must be valid JSON** in the following format:

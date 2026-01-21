@@ -30,6 +30,61 @@ REQUIRED_COLUMNS = [
 ]
 
 
+def compute_scores(
+    latest: pd.Series, trend_ticks: pd.DataFrame
+) -> tuple[int, Dict[str, int], Dict[str, bool]]:
+    trend = 0
+    momentum = 0
+    volume = 0
+    risk = 0
+
+    ma_alignment = latest["5ma"] > latest["10ma"] > latest["20ma"]
+    macd_bullish = (latest["macd"] - latest["signal_line"]) > 0
+    adx_strong = latest.get("adx", 0) > 20
+
+    if ma_alignment:
+        trend += 2
+    if macd_bullish:
+        trend += 2
+    if adx_strong:
+        trend += 1
+
+    rsi = float(latest["rsi"])
+    rsi_healthy = 40 <= rsi <= 70
+    if rsi_healthy:
+        momentum += 1
+
+    vma_short = trend_ticks["vma_short"].mean()
+    vma_long = trend_ticks["vma_long"].mean()
+    volume_support = vma_short > vma_long
+    if volume_support:
+        volume += 1
+
+    atr = float(latest["atr"])
+    close = float(latest["close"])
+    atr_ratio = atr / close if close else 0
+    atr_high_risk = atr_ratio > 0.05
+    if atr_high_risk:
+        risk -= 1
+
+    score_total = trend + momentum + volume + risk
+    score_breakdown = {
+        "trend": trend,
+        "momentum": momentum,
+        "volume": volume,
+        "risk": risk,
+    }
+    score_signals = {
+        "ma_alignment": ma_alignment,
+        "macd_bullish": macd_bullish,
+        "adx_strong": adx_strong,
+        "rsi_healthy": rsi_healthy,
+        "volume_support": volume_support,
+        "atr_high_risk": atr_high_risk,
+    }
+    return score_total, score_breakdown, score_signals
+
+
 def validate_required_columns(df: pd.DataFrame, required: List[str]) -> bool:
     missing = [col for col in required if col not in df.columns]
     if missing:
@@ -191,6 +246,11 @@ def generate_trend_signals(
 
     # ATR
     signal["atr"] = float(latest["atr"])
+
+    score_total, score_breakdown, score_signals = compute_scores(latest, trend_ticks)
+    signal["score_total"] = score_total
+    signal["score_breakdown"] = score_breakdown
+    signal["score_signals"] = score_signals
 
     # 綜合 summary (可給 LLM)
     signal["trend_categories"] = [

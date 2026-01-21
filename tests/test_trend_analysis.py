@@ -3,6 +3,55 @@ import pandas as pd
 from app.services.analysis import trend_analysis
 
 
+def make_minimal_valid_df():
+    return pd.DataFrame(
+        {
+            "macd": [0.1] * 6,
+            "signal_line": [0.05] * 6,
+            "5ma": [1] * 6,
+            "10ma": [1] * 6,
+            "20ma": [1] * 6,
+            "open": [1] * 6,
+            "high": [2] * 6,
+            "low": [1] * 6,
+            "close": [1.5] * 6,
+            "vma_short": [100] * 6,
+            "vma_long": [90] * 6,
+            "cci": [120] * 6,
+            "volume": [1000] * 6,
+            "rsi": [50] * 6,
+            "bollinger_upper": [11] * 6,
+            "bollinger_lower": [0] * 6,
+            "atr": [0.5] * 6,
+        }
+    )
+
+
+def make_trending_df():
+    return pd.DataFrame(
+        {
+            "macd": [0.2] * 6,
+            "signal_line": [0.05] * 6,
+            "5ma": [3] * 6,
+            "10ma": [2] * 6,
+            "20ma": [1] * 6,
+            "open": [1] * 6,
+            "high": [12] * 6,
+            "low": [1] * 6,
+            "close": [10] * 6,
+            "vma_short": [200] * 6,
+            "vma_long": [100] * 6,
+            "cci": [120] * 6,
+            "volume": [1000] * 6,
+            "rsi": [55] * 6,
+            "bollinger_upper": [12] * 6,
+            "bollinger_lower": [0] * 6,
+            "atr": [0.2] * 6,
+            "adx": [25] * 6,
+        }
+    )
+
+
 def test_generate_trend_signals_valid():
     # DataFrame with all required columns and enough rows
     df = pd.DataFrame(
@@ -39,3 +88,19 @@ def test_generate_trend_signals_missing_columns():
     result = trend_analysis.generate_trend_signals(df)
     assert result["signal_status"] == "invalid"
     assert "reason" in result
+
+
+def test_score_breakdown_structure():
+    df = make_minimal_valid_df()
+    result = trend_analysis.generate_trend_signals(df, trend_lookback_period=5)
+    assert "score_total" in result
+    assert "score_breakdown" in result
+    assert "score_signals" in result
+    assert isinstance(result["score_breakdown"], dict)
+    assert isinstance(result["score_signals"], dict)
+
+
+def test_score_total_logic():
+    df = make_trending_df()
+    result = trend_analysis.generate_trend_signals(df, trend_lookback_period=5)
+    assert result["score_total"] >= 4
